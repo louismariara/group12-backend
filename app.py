@@ -41,6 +41,10 @@ class User(db.Model):
     username = db.Column(db.String(100), nullable=False, unique=True)
     email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.String(100), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    is_instructor = db.Column(db.Boolean, default=False)
+    is_student = db.Column(db.Boolean, default=False)
+
 
 class Student(db.Model):
     __tablename__ = "student"
@@ -48,12 +52,17 @@ class Student(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(100), nullable=False)
+    is_student = db.Column(db.Boolean, default=True)
     courses = db.relationship('Course', secondary=student_course, backref=db.backref('students', lazy='dynamic'))
 
 class Instructor(db.Model):
     __tablename__ = "instructor"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    is_instructor = db.Column(db.Boolean, default=True)
+
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), unique=True)
     course = db.relationship('Course', uselist=False, backref=db.backref('instructor', uselist=False))
 
@@ -62,6 +71,17 @@ class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     duration = db.Column(db.Integer, nullable=False)
+
+class Grade(db.Model):
+    __tablename__ = "grade"
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    grade = db.Column(db.Float, nullable=False)  
+    comments = db.Column(db.String(500))  
+
+    student = db.relationship('Student', backref=db.backref('grades', lazy='dynamic'))
+    course = db.relationship('Course', backref=db.backref('grades', lazy='dynamic'))
 
 class StudentSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -81,5 +101,11 @@ class InstructorSchema(ma.SQLAlchemyAutoSchema):
         include_fk = True
         load_instance = True
 
+class GradeSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Grade
+        include_relationships = True
+        load_instance = True
+        
 if __name__ == '__main__':
     app.run()
