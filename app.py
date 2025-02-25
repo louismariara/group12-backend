@@ -5,6 +5,7 @@ from flask_migrate import Migrate
 from models import db  
 from config import Config  
 from sqlalchemy.sql import text
+from schemas import ma
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -14,7 +15,7 @@ app.config.from_object(Config)
 
 # Initialize extensions
 db.init_app(app)
-ma = Marshmallow(app)
+ma.init_app(app)
 migrate = Migrate(app, db)
 
 with app.app_context():
