@@ -1,29 +1,52 @@
-from flask import Flask
-from flask_marshmallow import Marshmallow
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from models import db  
-from config import Config  
-from sqlalchemy.sql import text
-from schemas import ma
+from flask import Flask, request, jsonify
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# Load configuration
-app.config.from_object(Config)
+app.config['JWT_SECRET_KEY'] = 'your_secret_key_here'  # Change this to a secure key in production
 
 # Initialize extensions
-db.init_app(app)
-ma.init_app(app)
-migrate = Migrate(app, db)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
 
-with app.app_context():
-    try:
-        db.session.execute(text('SELECT 1'))
-        print("Database connection successful!")
-    except Exception as e:
-        print(f"Database connection failed: {e}")
+# Mock database (replace with a real database in production)
+users = {}
 
+# Registration endpoint
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if username in users:
+        return jsonify({'message': 'User already exists'}), 400
+
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    users[username] = hashed_password
+    return jsonify({'message': 'User registered successfully'}), 201
+
+# Login endpoint
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if username not in users or not bcrypt.check_password_hash(users[username], password):
+        return jsonify({'message': 'Invalid credentials'}), 401
+
+    access_token = create_access_token(identity=username)
+    return jsonify({'access_token': access_token}), 200
+
+# Protected route
+@app.route('/protected', methods=['GET'])
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    return jsonify({'message': f'Hello, {current_user}! This is a protected route.'})
+
+# Run the app
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
