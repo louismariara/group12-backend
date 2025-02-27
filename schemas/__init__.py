@@ -1,5 +1,5 @@
 from flask_marshmallow import Marshmallow
-from models import Student, Course, Instructor, Grade 
+from models import Student, Course, Instructor, Grade, User 
 
 ma = Marshmallow() 
 
@@ -26,3 +26,9 @@ class GradeSchema(ma.SQLAlchemyAutoSchema):
         model = Grade
         include_relationships = True
         load_instance = True
+class UserSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        include_relationships = False
+        load_instance = True
+        exclude = ['password']

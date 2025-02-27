@@ -6,6 +6,8 @@ from models import db
 from config import Config  
 from sqlalchemy.sql import text
 from schemas import ma
+from routes import admin_bp  # Import the admin Blueprint
+
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -17,6 +19,9 @@ app.config.from_object(Config)
 db.init_app(app)
 ma.init_app(app)
 migrate = Migrate(app, db)
+
+app.register_blueprint(admin_bp)  # Add this after initializing extensions
+
 
 with app.app_context():
     try:
