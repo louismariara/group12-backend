@@ -1,13 +1,12 @@
 from flask import Blueprint, jsonify, request
-from flask_login import login_required, current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity  # Replace flask_login import with this
 from models import db, User, Course, Grade
-from schemas import ma, UserSchema, CourseSchema, GradeSchema  
-from werkzeug.security import generate_password_hash
+from schemas import ma, UserSchema, CourseSchema, GradeSchema  # Import all schemas from schemas
+from bcrypt import hashpw, gensalt  # Replace werkzeug.security with bcrypt
 
 # Create a Blueprint for admin routes
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# Initialize schema instances
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 course_schema = CourseSchema()
@@ -15,13 +14,15 @@ courses_schema = CourseSchema(many=True)
 grade_schema = GradeSchema()
 grades_schema = GradeSchema(many=True)
 
-
+# CRUD Operations for Users (Admin Only)
 
 # Create a new user (POST /admin/users)
 @admin_bp.route('/users', methods=['POST'])
-@login_required
+@jwt_required()  # Replace @login_required
 def create_user():
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()  # Get user ID from JWT token
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     data = request.get_json()
@@ -37,11 +38,11 @@ def create_user():
     if existing_email:
         return jsonify({"error": "Email already exists"}), 400
 
-    # Create new user with hashed password
+    # Create new user with hashed password (using Bcrypt)
     new_user = User(
         username=data['username'],
         email=data['email'],
-        password=generate_password_hash(data['password'], method='sha256')
+        password=hashpw(data['password'].encode('utf-8'), gensalt())
     )
     # Set role flags based on input (default to student if not specified, pending for instructor)
     new_user.is_admin = data.get('is_admin', False)
@@ -58,9 +59,11 @@ def create_user():
 
 # Read all users (GET /admin/users)
 @admin_bp.route('/users', methods=['GET'])
-@login_required
+@jwt_required()  # Replace @login_required
 def get_users():
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     users = User.query.all()
@@ -75,9 +78,11 @@ def get_users():
 
 # Read a specific user by ID (GET /admin/users/<id>)
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
-@login_required
+@jwt_required()  # Replace @login_required
 def get_user(user_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     user = User.query.get_or_404(user_id)
@@ -92,9 +97,11 @@ def get_user(user_id):
 
 # Update a user (PUT /admin/users/<id>)
 @admin_bp.route('/users/<int:user_id>', methods=['PUT'])
-@login_required
+@jwt_required()  # Replace @login_required
 def update_user(user_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     user = User.query.get_or_404(user_id)
@@ -117,9 +124,9 @@ def update_user(user_id):
             return jsonify({"error": "Email already exists"}), 400
         user.email = data['email']
 
-    # Update password if provided (hash it)
+    # Update password if provided (hash it with Bcrypt)
     if 'password' in data:
-        user.password = generate_password_hash(data['password'], method='sha256')
+        user.password = hashpw(data['password'].encode('utf-8'), gensalt())
 
     # Update role flags, with special handling for instructor approval
     if 'is_instructor' in data:
@@ -151,9 +158,11 @@ def update_user(user_id):
 
 # Delete a user (DELETE /admin/users/<id>)
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
-@login_required
+@jwt_required()  # Replace @login_required
 def delete_user(user_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     user = User.query.get_or_404(user_id)
@@ -164,14 +173,28 @@ def delete_user(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to delete user: {str(e)}"}), 500
+    
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity  # Replace flask_login import with this
+from models import db, Course
+from schemas import ma, CourseSchema
+
+# Create a Blueprint for admin routes (reusing admin_bp)
+# Note: Consolidate under admin_bp instead of creating courses_bp
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')  # Already defined above, but ensuring consistency
+
+course_schema = CourseSchema()
+courses_schema = CourseSchema(many=True)
 
 # CRUD Operations for Courses (Admin Only)
 
 # Create a new course (POST /admin/courses)
 @admin_bp.route('/courses', methods=['POST'])
-@login_required
+@jwt_required()  # Replace @login_required
 def create_course():
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     data = request.get_json()
@@ -194,9 +217,11 @@ def create_course():
 
 # Read all courses (GET /admin/courses)
 @admin_bp.route('/courses', methods=['GET'])
-@login_required
+@jwt_required()  # Replace @login_required
 def get_courses():
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     courses = Course.query.all()
@@ -204,9 +229,11 @@ def get_courses():
 
 # Read a specific course by ID (GET /admin/courses/<id>)
 @admin_bp.route('/courses/<int:course_id>', methods=['GET'])
-@login_required
+@jwt_required()  # Replace @login_required
 def get_course(course_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     course = Course.query.get_or_404(course_id)
@@ -214,9 +241,11 @@ def get_course(course_id):
 
 # Update a course (PUT /admin/courses/<id>)
 @admin_bp.route('/courses/<int:course_id>', methods=['PUT'])
-@login_required
+@jwt_required()  # Replace @login_required
 def update_course(course_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     course = Course.query.get_or_404(course_id)
@@ -241,9 +270,11 @@ def update_course(course_id):
 
 # Delete a course (DELETE /admin/courses/<id>)
 @admin_bp.route('/courses/<int:course_id>', methods=['DELETE'])
-@login_required
+@jwt_required()  # Replace @login_required
 def delete_course(course_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     course = Course.query.get_or_404(course_id)
@@ -255,13 +286,27 @@ def delete_course(course_id):
         db.session.rollback()
         return jsonify({"error": f"Failed to delete course: {str(e)}"}), 500
 
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity  # Replace flask_login import with this
+from models import db, Grade
+from schemas import ma, GradeSchema
+
+# Create a Blueprint for admin routes (reusing admin_bp)
+# Note: Consolidate under admin_bp instead of creating grades_bp
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')  # Already defined above, but ensuring consistency
+
+grade_schema = GradeSchema()
+grades_schema = GradeSchema(many=True)
+
 # CRUD Operations for Grades (Admin Only)
 
 # Create a new grade (POST /admin/grades)
 @admin_bp.route('/grades', methods=['POST'])
-@login_required
+@jwt_required()  # Replace @login_required
 def create_grade():
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     data = request.get_json()
@@ -284,9 +329,11 @@ def create_grade():
 
 # Read all grades (GET /admin/grades)
 @admin_bp.route('/grades', methods=['GET'])
-@login_required
+@jwt_required()  # Replace @login_required
 def get_grades():
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     grades = Grade.query.all()
@@ -294,9 +341,11 @@ def get_grades():
 
 # Read a specific grade by ID (GET /admin/grades/<id>)
 @admin_bp.route('/grades/<int:grade_id>', methods=['GET'])
-@login_required
+@jwt_required()  # Replace @login_required
 def get_grade(grade_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     grade = Grade.query.get_or_404(grade_id)
@@ -304,9 +353,11 @@ def get_grade(grade_id):
 
 # Update a grade (PUT /admin/grades/<id>)
 @admin_bp.route('/grades/<int:grade_id>', methods=['PUT'])
-@login_required
+@jwt_required()  # Replace @login_required
 def update_grade(grade_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     grade = Grade.query.get_or_404(grade_id)
@@ -327,9 +378,11 @@ def update_grade(grade_id):
 
 # Delete a grade (DELETE /admin/grades/<id>)
 @admin_bp.route('/grades/<int:grade_id>', methods=['DELETE'])
-@login_required
+@jwt_required()  # Replace @login_required
 def delete_grade(grade_id):
-    if not current_user.is_admin:
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    if not user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
 
     grade = Grade.query.get_or_404(grade_id)

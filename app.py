@@ -6,8 +6,8 @@ from models import db
 from config import Config  
 from sqlalchemy.sql import text
 from schemas import ma
-from routes import admin_bp  # Import the admin Blueprint
-
+from routes import admin_bp, auth_bp 
+from flask_jwt_extended import JWTManager
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -19,9 +19,11 @@ app.config.from_object(Config)
 db.init_app(app)
 ma.init_app(app)
 migrate = Migrate(app, db)
+jwt = JWTManager(app)  # Initialize JWTManager for JWT authentication
 
-app.register_blueprint(admin_bp)  # Add this after initializing extensions
-
+# Register Blueprints
+app.register_blueprint(admin_bp)
+app.register_blueprint(auth_bp)
 
 with app.app_context():
     try:
