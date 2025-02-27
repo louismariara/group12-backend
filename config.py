@@ -11,7 +11,7 @@ logging.info(f"DB_PASSWORD: {os.getenv('DB_PASSWORD')}")
 logging.info(f"DB_HOST: {os.getenv('DB_HOST')}")
 logging.info(f"DB_PORT: {os.getenv('DB_PORT')}")
 logging.info(f"DB_NAME: {os.getenv('DB_NAME')}")
-# Validate required environment variables
+# Validate required environment variable
 required_vars = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_NAME']
 missing_vars = [var for var in required_vars if not os.getenv(var)]
 if missing_vars:
@@ -24,5 +24,5 @@ class Config:
         f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Optional, for Flask-Login or other security
+    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  
     DEBUG = True  
