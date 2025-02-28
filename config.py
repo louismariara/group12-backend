@@ -24,5 +24,5 @@ class Config:
         f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Optional, for Flask-Login or other security
+    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  
     DEBUG = True  
