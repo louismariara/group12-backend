@@ -2,12 +2,18 @@ from flask import Flask, request, jsonify
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from models import db  
-from config import Config  
-from sqlalchemy.sql import text
-from schemas import ma
-from routes import admin_bp, auth_bp 
-from flask_jwt_extended import JWTManager
+from dotenv import load_dotenv
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import timedelta
+from flask_cors import CORS
+from config import Config
+from production import ProductionConfig
+from sqlalchemy import text
+import os
+
+# Load environment variables
+load_dotenv('/home/louis-mariara/Documents/phase5/project5/.env')
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -25,11 +31,8 @@ CORS(app, resources=Config.CORS_RESOURCES)
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 migrate = Migrate(app, db)
-jwt = JWTManager(app)  # Initialize JWTManager for JWT authentication
-
-# Register Blueprints
-app.register_blueprint(admin_bp)
-app.register_blueprint(auth_bp)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
 
 # Import models and schemas
 from models import User, Student, Instructor, Course, Grade, student_course
@@ -38,10 +41,13 @@ from schemas import StudentSchema, CourseSchema, InstructorSchema, GradeSchema, 
 # Import blueprints
 from routes.admin_routes import admin_bp
 from routes.auth_route import auth_bp
-
+from routes.student_route import student_bp
+from routes.instructor_route import instructor_bp
 # Register Blueprints
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(student_bp, url_prefix='/api/students')
+app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
 
 # Authentication routes
 @app.route('/api/register', methods=['POST'])

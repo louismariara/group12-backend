@@ -10,8 +10,10 @@ flask-sqlalchemy = "*"
 flask-login = "*"
 flask = "*"
 bcrypt = "*"
+flask-cors = "*"
+flask-bcrypt = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.12"
+python_version = "3"
