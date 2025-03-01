@@ -2,13 +2,17 @@ from dotenv import load_dotenv
 import os
 import logging
 
+# Load environment variables
 load_dotenv('/home/louis-mariara/Documents/phase5/project5/.env')
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logging.info(f"DB_USER: {os.getenv('DB_USER')}")
 logging.info(f"DB_PASSWORD: {os.getenv('DB_PASSWORD')}")
 logging.info(f"DB_HOST: {os.getenv('DB_HOST')}")
 logging.info(f"DB_PORT: {os.getenv('DB_PORT')}")
 logging.info(f"DB_NAME: {os.getenv('DB_NAME')}")
+
 # Validate required environment variables
 required_vars = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_NAME']
 missing_vars = [var for var in required_vars if not os.getenv(var)]
@@ -21,7 +25,10 @@ class Config:
         f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
         f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
     )
+    CORS_ORIGINS = ["http://localhost:3000"]  # Add your frontend URL(s) here
+    CORS_RESOURCES = {r"/api/*": {"origins": CORS_ORIGINS}}
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-jwt-secret-key-here')
-    JWT_ACCESS_TOKEN_EXPIRES = 3600  # Optional: 1 hour expiration
+    JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour expiration
     DEBUG = True
+    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Added SECRET_KEY

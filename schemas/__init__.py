@@ -1,7 +1,7 @@
 from flask_marshmallow import Marshmallow
-from models import Student, Course, Instructor, Grade 
+from models import Student, Course, Instructor, Grade
 
-ma = Marshmallow() 
+ma = Marshmallow()
 
 class StudentSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
