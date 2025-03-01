@@ -1,5 +1,12 @@
-class ProductionConfig:
+import os
+import logging
+from config import Config
+
+class ProductionConfig(Config):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = "postgresql://user:password@production-db-host:5432/production_db"
-    JWT_SECRET_KEY = "your-production-secret-key"
-    CORS_ORIGINS = ["https://your-production-frontend.com"]
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'https://your-production-frontend.com').split(',')
+    CORS_RESOURCES = {r"/api/*": {"origins": CORS_ORIGINS}}
+    SQLALCHEMY_ECHO = False  # Explicitly disable query logging
+    logging.basicConfig(filename='app.log', level=logging.INFO)  # Optional

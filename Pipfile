@@ -12,6 +12,7 @@ flask = "*"
 bcrypt = "*"
 flask-cors = "*"
 flask-bcrypt = "*"
+flask-marshmallow = "*"
 
 [dev-packages]
 
