@@ -1,9 +1,5 @@
 from flask_marshmallow import Marshmallow
-<<<<<<< HEAD
-from models import Student, Course, Instructor, Grade
-=======
 from models import Student, Course, Instructor, Grade, User 
->>>>>>> c5c057fbb3c9c7ecd00378e3b84402c5893f565d
 
 ma = Marshmallow()
 
