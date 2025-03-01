@@ -14,7 +14,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), nullable=False, unique=True)
     email = db.Column(db.String(100), nullable=False, unique=True)
+<<<<<<< HEAD
     password = db.Column(db.LargeBinary, nullable=False)  # For Bcrypt
+=======
+    password = db.Column(db.LargeBinary, nullable=False)
+>>>>>>> c5c057fbb3c9c7ecd00378e3b84402c5893f565d
     is_admin = db.Column(db.Boolean, default=False)
     is_instructor = db.Column(db.Boolean, default=False)
     is_student = db.Column(db.Boolean, default=False)
@@ -29,8 +33,13 @@ class Student(db.Model):
     __tablename__ = "student"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+<<<<<<< HEAD
     email = db.Column(db.String(100), nullable=False)  # Changed to String
     password = db.Column(db.LargeBinary, nullable=False)  # For Bcrypt
+=======
+    email = db.Column(db.String(100), nullable=False)
+    password = db.Column(db.LargeBinary, nullable=False)
+>>>>>>> c5c057fbb3c9c7ecd00378e3b84402c5893f565d
     is_student = db.Column(db.Boolean, default=True)
     courses = db.relationship('Course', secondary=student_course, backref=db.backref('students', lazy='dynamic'))
 
@@ -39,7 +48,11 @@ class Instructor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False)
+<<<<<<< HEAD
     password = db.Column(db.LargeBinary, nullable=False)  # For Bcrypt
+=======
+    password = db.Column(db.LargeBinary, nullable=False)
+>>>>>>> c5c057fbb3c9c7ecd00378e3b84402c5893f565d
     is_instructor = db.Column(db.Boolean, default=True)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), unique=True)
     course = db.relationship('Course', uselist=False, backref=db.backref('instructor', uselist=False))

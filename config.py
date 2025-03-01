@@ -2,11 +2,16 @@ from dotenv import load_dotenv
 import os
 import logging
 
+<<<<<<< HEAD
 # Load environment variables
 load_dotenv('/home/louis-mariara/Documents/phase5/project5/.env')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+=======
+load_dotenv('/home/louis-mariara/Documents/phase5/project5/.env')
+
+>>>>>>> c5c057fbb3c9c7ecd00378e3b84402c5893f565d
 logging.info(f"DB_USER: {os.getenv('DB_USER')}")
 logging.info(f"DB_PASSWORD: {os.getenv('DB_PASSWORD')}")
 logging.info(f"DB_HOST: {os.getenv('DB_HOST')}")
@@ -28,7 +33,14 @@ class Config:
     CORS_ORIGINS = ["http://localhost:3000"]  # Add your frontend URL(s) here
     CORS_RESOURCES = {r"/api/*": {"origins": CORS_ORIGINS}}
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+<<<<<<< HEAD
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-jwt-secret-key-here')
     JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour expiration
     DEBUG = True
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Added SECRET_KEY
+=======
+    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Optional, for Flask-Login (can be removed if only using JWT)
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-jwt-secret-key-here')  # Required for JWT
+    JWT_ACCESS_TOKEN_EXPIRES = 3600  # Optional: Token expires in 1 hour (in seconds)
+    DEBUG = True
+>>>>>>> c5c057fbb3c9c7ecd00378e3b84402c5893f565d
