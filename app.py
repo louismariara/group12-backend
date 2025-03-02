@@ -13,8 +13,7 @@ from sqlalchemy import text
 import os
 
 # Load environment variables
-load_dotenv('/home/louis-mariara/Documents/phase5/project5/.env')
-
+load_dotenv()  
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -48,55 +47,6 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(student_bp, url_prefix='/api/students')
 app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
-
-# Authentication routes
-@app.route('/api/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-
-        if not username or not password:
-            return jsonify({'message': 'Username and password are required'}), 400
-        if len(password) < 6:
-            return jsonify({'message': 'Password must be at least 6 characters'}), 400
-        if User.query.filter_by(username=username).first():
-            return jsonify({'message': 'User already exists'}), 400
-
-        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-        new_user = User(
-            username=username,
-            password=hashed_password,
-            is_student=data.get('is_student', True),
-            is_instructor=data.get('is_instructor', False),
-            is_admin=data.get('is_admin', False)
-        )
-
-        db.session.add(new_user)
-        db.session.commit()
-        return jsonify({'message': 'User registered successfully'}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Failed to register: {str(e)}'}), 500
-
-@app.route('/api/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-
-        if not username or not password:
-            return jsonify({'message': 'Username and password are required'}), 400
-        user = User.query.filter_by(username=username).first()
-        if not user or not bcrypt.check_password_hash(user.password, password.encode('utf-8')):
-            return jsonify({'message': 'Invalid credentials'}), 401
-
-        access_token = create_access_token(identity=username, expires_delta=timedelta(hours=1))
-        return jsonify({'access_token': access_token}), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to log in: {str(e)}"}), 500
 
 # Protected route example
 @app.route('/api/protected', methods=['GET'])

@@ -2,10 +2,10 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models import db, User
 from flask_bcrypt import Bcrypt
+from app import bcrypt
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-bcrypt = Bcrypt()
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
