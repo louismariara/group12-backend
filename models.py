@@ -1,7 +1,6 @@
+from extensions import db
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-
-db = SQLAlchemy()
 
 # Association table for many-to-many relationship between Student and Course
 student_course = db.Table('student_course',
@@ -20,15 +19,19 @@ class User(db.Model):
     is_student = db.Column(db.Boolean, default=False)
 
     def validate_roles(self):
-        if self.is_admin and (self.is_instructor or self.is_student):
-            raise ValueError("Admin users cannot have other roles.")
+        if self.id == 1:
+            if not self.is_admin or self.is_instructor or self.is_student:
+                raise ValueError("User with id=1 must be admin only.")
+        else:
+            if self.is_admin:
+                raise ValueError("Only user with id=1 can be an admin.")
         if self.is_instructor and self.is_student:
             raise ValueError("A user cannot be both an instructor and a student.")
 
 class Student(db.Model):
     __tablename__ = "student"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False)
     password = db.Column(db.LargeBinary, nullable=False)
     is_student = db.Column(db.Boolean, default=True)
@@ -37,27 +40,27 @@ class Student(db.Model):
 class Instructor(db.Model):
     __tablename__ = "instructor"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False)
     password = db.Column(db.LargeBinary, nullable=False)
     is_instructor = db.Column(db.Boolean, default=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), unique=True)
-    course = db.relationship('Course', uselist=False, backref=db.backref('instructor', uselist=False))
+    # Removed course_id and course relationship
 
 class Course(db.Model):
     __tablename__ = "course"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     duration = db.Column(db.Integer, nullable=False)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('instructor.id'), nullable=True)
+    instructor = db.relationship('Instructor', backref=db.backref('courses', lazy='dynamic'), foreign_keys=[instructor_id])
 
 class Grade(db.Model):
     __tablename__ = "grade"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
-    grade = db.Column(db.Float, nullable=False)  
-    comments = db.Column(db.String(500))  
+    grade = db.Column(db.Float, nullable=False)
+    comments = db.Column(db.String(500))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    
     student = db.relationship('Student', backref=db.backref('grades', lazy='dynamic'))
     course = db.relationship('Course', backref=db.backref('grades', lazy='dynamic'))

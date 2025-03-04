@@ -1,5 +1,6 @@
 from flask_marshmallow import Marshmallow
 from models import Student, Course, Instructor, Grade, User 
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 
 ma = Marshmallow()
 
