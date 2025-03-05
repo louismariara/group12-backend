@@ -51,15 +51,18 @@ class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     duration = db.Column(db.Integer, nullable=False)
-    instructor_id = db.Column(db.Integer, db.ForeignKey('instructor.id'), nullable=True)
-    instructor = db.relationship('Instructor', backref=db.backref('courses', lazy='dynamic'), foreign_keys=[instructor_id])
-
+    instructor_id = db.Column(db.Integer, db.ForeignKey("instructor.id"), nullable=True)
+    image = db.Column(db.String(255), nullable=True)  # Store image path or URL
+    modules = db.Column(db.JSON, nullable=True)  # Store modules as JSON (e.g., list of dictionaries)
+    instructor = db.relationship(
+        "Instructor", backref=db.backref("courses", lazy="dynamic"), foreign_keys=[instructor_id]
+    )
 class Grade(db.Model):
     __tablename__ = "grade"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
-    grade = db.Column(db.Float, nullable=False)
+    grade = db.Column(db.String(10), nullable=False)
     comments = db.Column(db.String(500))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     student = db.relationship('Student', backref=db.backref('grades', lazy='dynamic'))

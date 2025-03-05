@@ -1,9 +1,15 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db, bcrypt
+from supabase import create_client, Client
+import os
 
 # Define blueprint once
 admin_bp = Blueprint('admin', __name__)
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_ANON_KEY")
+supabase: Client = create_client(supabase_url, supabase_key)
+
 
 # User Routes
 @admin_bp.route('/users', methods=['POST'])
@@ -187,17 +193,24 @@ def create_course():
     if not data or not all(key in data for key in ['name', 'duration']):
         return jsonify({"error": "Missing required fields: name and duration"}), 400
     new_course = Course(
-        name=data['name'],
-        duration=data['duration']
+        name=data["name"],
+        duration=data["duration"],
+        image=data.get("image", None),  # Store path or URL
+        modules=data.get("modules", None),
     )
     try:
+        if data.get("image_file"):  # If uploading a file (advanced)
+            file_path = data["image_file"]
+            # Upload to Supabase Storage (example)
+            response = supabase.storage.from_("course_images").upload(file_path, file_path.split("/")[-1])
+            new_course.image = f"https://<your-supabase-project>.supabase.co/storage/v1/object/public/course_images/{file_path.split('/')[-1]}"
         db.session.add(new_course)
         db.session.commit()
         return jsonify(course_schema.dump(new_course)), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to create course: {str(e)}"}), 500
-
+    
 @admin_bp.route('/courses', methods=['GET'])
 @jwt_required()
 def get_courses():

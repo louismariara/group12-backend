@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
-from flask_jwt_extended import jwt_required, get_jwt_identity 
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from dotenv import load_dotenv
 from datetime import timedelta
 from flask_cors import CORS
@@ -9,10 +9,15 @@ from config import Config
 from production import ProductionConfig
 from sqlalchemy import text
 import os
-from extensions import db, bcrypt, jwt 
+from extensions import db, bcrypt, jwt
+from routes.admin_routes import admin_bp
+from routes.auth_route import auth_bp
+from routes.student_route import student_bp
+from routes.instructor_route import instructor_bp
 
 # Load environment variables
 load_dotenv()
+
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -22,32 +27,23 @@ if os.getenv('FLASK_ENV') == 'production':
 else:
     app.config.from_object(Config)
 
-# Initialize CORS
-CORS(app, resources=Config.CORS_RESOURCES)
+# Configure CORS to allow localhost:3000 (override config.py if needed)
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000"]}})
 
 # Initialize extensions
-db .init_app(app)
+db.init_app(app)
 ma = Marshmallow(app)
 migrate = Migrate(app, db)
 bcrypt.init_app(app)
 jwt.init_app(app)
 
-# Register blueprints directly from their files
-def register_blueprints():
-    from routes.admin_routes import admin_bp
-    from routes.auth_route import auth_bp
-    from routes.student_route import student_bp
-    from routes.instructor_route import instructor_bp
-    
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(student_bp, url_prefix='/api/students')
-    app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
+# Register blueprints directly
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(student_bp, url_prefix='/api/students')
+app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
 
-# Call after extensions are initialized
-register_blueprints()
-
-# Protected route 
+# Protected route
 @app.route('/api/protected', methods=['GET'])
 @jwt_required()
 def protected():
