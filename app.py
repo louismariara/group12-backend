@@ -9,6 +9,7 @@ from config import Config
 from production import ProductionConfig
 from sqlalchemy import text
 import os
+import logging
 from extensions import db, bcrypt, jwt
 from routes.admin_routes import admin_bp
 from routes.auth_route import auth_bp
@@ -26,6 +27,9 @@ if os.getenv('FLASK_ENV') == 'production':
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(Config)
+    
+logging.basicConfig(level=logging.DEBUG)  
+logger = logging.getLogger(__name__)
 
 # Configure CORS to allow localhost:3000 (override config.py if needed)
 CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000"]}})
@@ -84,12 +88,18 @@ def get_courses():
     from extensions import db
     from models import Course
     from schemas import CourseSchema
+    logger.debug(f"Received request to /api/courses with token: {request.headers.get('Authorization')}")
     try:
+        logger.debug("Fetching all courses")
         courses = Course.query.all()
-        return CourseSchema(many=True).dump(courses), 200
+        logger.debug(f"Found {len(courses)} courses")
+        result = CourseSchema(many=True).dump(courses)
+        logger.debug("Courses serialized successfully")
+        return result, 200
     except Exception as e:
+        logger.error(f"Error in get_courses: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to fetch courses: {str(e)}"}), 500
-
+    
 @app.route('/api/students/<int:student_id>/courses/<int:course_id>', methods=['POST'])
 @jwt_required()
 def enroll_student_in_course(student_id, course_id):

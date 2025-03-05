@@ -53,7 +53,7 @@ def create_user():
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
-    from models import User
+    from models import User, Instructor
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
@@ -63,7 +63,8 @@ def get_users():
         'id': user.id,
         'username': user.username,
         'email': user.email,
-        'role': 'instructor' if user.is_instructor else 'student'
+        'role': 'instructor' if user.is_instructor else 'student',
+        'is_instructor_verified': Instructor.query.filter_by(id=user.id).first() is not None if user.is_instructor else False
     } for user in all_users]
     return jsonify(user_data), 200
 

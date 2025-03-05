@@ -15,14 +15,13 @@ class CourseSchema(SQLAlchemyAutoSchema):
         model = Course
         include_fk = True
         load_instance = True
+        exclude = ("created_at",)
 
-    # Custom fields for Course
-    image = auto_field("image", allow_none=True)  # Map to the image column in Course model
-    modules = auto_field("modules", allow_none=True)  # Map to the modules JSON column
-    # Ensure name and duration are included (already automatic via model)
+    image = auto_field("image", allow_none=True)
+    modules = auto_field("modules", allow_none=True)
     name = auto_field(required=True)
     duration = auto_field(required=True)
-
+    
 class InstructorSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Instructor

@@ -52,11 +52,14 @@ class Course(db.Model):
     name = db.Column(db.String(100), nullable=False)
     duration = db.Column(db.Integer, nullable=False)
     instructor_id = db.Column(db.Integer, db.ForeignKey("instructor.id"), nullable=True)
-    image = db.Column(db.String(255), nullable=True)  # Store image path or URL
-    modules = db.Column(db.JSON, nullable=True)  # Store modules as JSON (e.g., list of dictionaries)
+    image = db.Column(db.String(255), nullable=True)
+    modules = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Add this
     instructor = db.relationship(
         "Instructor", backref=db.backref("courses", lazy="dynamic"), foreign_keys=[instructor_id]
-    )
+    )    
+    
+    
 class Grade(db.Model):
     __tablename__ = "grade"
     id = db.Column(db.Integer, primary_key=True)
