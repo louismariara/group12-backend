@@ -14,6 +14,8 @@ from routes.admin_routes import admin_bp
 from routes.auth_route import auth_bp
 from routes.student_route import student_bp
 from routes.instructor_route import instructor_bp
+from models import Course  # Import at top
+from schemas import CourseSchema  # Import at top
 
 # Load environment variables
 load_dotenv()
@@ -27,12 +29,12 @@ if os.getenv('FLASK_ENV') == 'production':
 else:
     app.config.from_object(Config)
 
-# Logging setup
+# Logging setup (override config.py's basic setup if needed)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Configure CORS
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000"]}}, supports_credentials=True)
+# Configure CORS using config values
+CORS(app, resources=app.config['CORS_RESOURCES'], supports_credentials=True)
 
 # Initialize extensions
 db.init_app(app)
@@ -51,6 +53,7 @@ app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
 def jwt_required_optional(fn):
     def wrapper(*args, **kwargs):
         if request.method == 'OPTIONS':
+            logger.debug(f"Handling OPTIONS request for {request.path}")
             return '', 200  # Allow preflight requests without JWT
         return jwt_required()(fn)(*args, **kwargs)
     wrapper.__name__ = fn.__name__  # Preserve endpoint name
@@ -62,9 +65,6 @@ def get_courses():
     if request.method == 'OPTIONS':
         logger.debug("Handling OPTIONS request for /api/courses")
         return '', 200
-    from extensions import db
-    from models import Course
-    from schemas import CourseSchema
     try:
         logger.debug("Fetching all courses")
         courses = Course.query.all()
@@ -82,9 +82,6 @@ def get_course(course_id):
     if request.method == 'OPTIONS':
         logger.debug(f"Handling OPTIONS request for /api/courses/{course_id}")
         return '', 200
-    from extensions import db
-    from models import Course
-    from schemas import CourseSchema
     try:
         logger.debug(f"Fetching course with ID: {course_id}")
         course = Course.query.get_or_404(course_id)
@@ -95,11 +92,12 @@ def get_course(course_id):
         logger.error(f"Error fetching course {course_id}: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to fetch course: {str(e)}"}), 500
 
-# Check database connection
+# Check database connection and create tables
 with app.app_context():
     try:
+        db.create_all()  # Ensure tables are created
         db.session.execute(text('SELECT 1'))
-        print("Database connection successful!")
+        print("Database connection successful and tables created!")
     except Exception as e:
         print(f"Database connection failed: {e}")
 

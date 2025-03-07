@@ -19,20 +19,23 @@ def get_all_courses():
         return jsonify(courses_schema.dump(courses)), 200
     except Exception as e:
         return jsonify({'error': f'Failed to fetch courses: {str(e)}'}), 500
-
 @instructor_bp.route('/my-courses', methods=['GET'])
 @jwt_required()
 def get_my_courses():
-    try:
-        instructor_username = get_jwt_identity()
-        instructor = Instructor.query.filter_by(username=instructor_username).first()
-        if not instructor or not instructor.is_instructor_verified:
-            return jsonify({'message': 'Not a verified instructor'}), 403
-        courses = Course.query.filter_by(instructor_id=instructor.id).all()
-        return jsonify(courses_schema.dump(courses)), 200
-    except Exception as e:
-        return jsonify({'error': f'Failed to fetch your courses: {str(e)}'}), 500
-
+    current_user_id = get_jwt_identity()
+    current_user = User.query.filter_by(username=current_user_id).first()
+    if not current_user or not current_user.is_instructor:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    courses = Course.query.filter_by(instructor_id=current_user.id).all()
+    course_data = [{
+        'id': c.id,
+        'name': c.name,
+        'duration': c.duration,
+        'image': c.image,
+        'created_at': c.created_at.isoformat() if c.created_at else None,
+        'students': [s.id for s in c.students]  # List of student IDs
+    } for c in courses]
+    return jsonify(course_data), 200
 @instructor_bp.route('/courses/<int:course_id>', methods=['PUT'])
 @jwt_required()
 def update_course(course_id):
@@ -71,6 +74,26 @@ def get_students_in_course(course_id):
         return jsonify(student_data), 200
     except Exception as e:
         return jsonify({'error': f'Failed to fetch students: {str(e)}'}), 500
+    
+@instructor_bp.route('/courses', methods=['POST'])
+@jwt_required()
+def create_instructor_course():
+    current_user_id = get_jwt_identity()
+    current_user = User.query.filter_by(username=current_user_id).first()
+    if not current_user or not current_user.is_instructor:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    data = request.get_json()
+    if not all(key in data for key in ['name', 'duration']):
+        return jsonify({"error": "Missing required fields: name and duration"}), 400
+    new_course = Course(
+        name=data['name'],
+        duration=data['duration'],
+        instructor_id=current_user.id,
+        image=data.get('image', None)
+    )
+    db.session.add(new_course)
+    db.session.commit()
+    return jsonify({"id": new_course.id, "message": "Course created"}), 201
 
 @instructor_bp.route('/grades', methods=['GET'])
 @jwt_required()

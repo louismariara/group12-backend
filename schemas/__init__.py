@@ -10,18 +10,28 @@ class StudentSchema(SQLAlchemyAutoSchema):
         include_relationships = True
         load_instance = True
 
+class UserSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        include_relationships = False
+        load_instance = True
+        exclude = ["password"]
+
 class CourseSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Course
         include_fk = True
+        include_relationships = True  # Enable relationships for students
         load_instance = True
-        exclude = ("created_at",)
+        # Remove created_at from exclude to include it
 
     image = auto_field("image", allow_none=True)
     modules = auto_field("modules", allow_none=True)
     name = auto_field(required=True)
     duration = auto_field(required=True)
-    
+    created_at = auto_field(allow_none=True)  # Explicitly include
+    students = ma.Nested(UserSchema, many=True, only=("id",))  # Serialize student IDs
+
 class InstructorSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Instructor
@@ -34,16 +44,7 @@ class GradeSchema(SQLAlchemyAutoSchema):
         include_relationships = True
         load_instance = True
 
-    # Custom field for Grade to ensure it's a string (e.g., "A", "B+")
-    grade = auto_field(type_=str, required=True)  # Override to ensure string type
-    # Keep other fields automatic
+    grade = auto_field(type_=str, required=True)
     student_id = auto_field(required=True)
     course_id = auto_field(required=True)
     comments = auto_field(allow_none=True)
-
-class UserSchema(SQLAlchemyAutoSchema):
-    class Meta:
-        model = User
-        include_relationships = False
-        load_instance = True
-        exclude = ["password"]

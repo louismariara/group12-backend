@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db, bcrypt
 from supabase import create_client, Client
 import os
-from models import User, Grade, Course
+from models import User, Grade, Course , Instructor
 # Define blueprint once
 admin_bp = Blueprint('admin', __name__)
 supabase_url = os.getenv("SUPABASE_URL")
@@ -53,21 +53,24 @@ def create_user():
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
-    from models import User, Instructor
-    current_user_id = get_jwt_identity()
-    current_user = User.query.filter_by(username=current_user_id).first()
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    all_users = User.query.all()
-    user_data = [{
-        'id': user.id,
-        'username': user.username,
-        'email': user.email,
-        'role': 'instructor' if user.is_instructor else 'student',
-        'is_instructor_verified': Instructor.query.filter_by(id=user.id).first() is not None if user.is_instructor else False
-    } for user in all_users]
-    return jsonify(user_data), 200
-
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.filter_by(username=current_user_id).first()
+        if not current_user or not current_user.is_admin:
+            return jsonify({"error": "Unauthorized: Admin access required"}), 403
+        all_users = User.query.all()
+        user_data = [{
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'role': 'instructor' if user.is_instructor else 'student' if user.is_student else 'admin',
+            'is_instructor_verified': Instructor.query.filter_by(id=user.id).first().is_instructor_verified if user.is_instructor and Instructor.query.filter_by(id=user.id).first() else False
+        } for user in all_users]
+        return jsonify(user_data), 200
+    except Exception as e:
+        print(f"Error in get_users: {str(e)}")
+        return jsonify({"error": f"Failed to fetch users: {str(e)}"}), 500
+    
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
@@ -136,31 +139,33 @@ def update_user(user_id):
 @admin_bp.route('/users/<int:user_id>/approve-instructor', methods=['PUT'])
 @jwt_required()
 def approve_instructor(user_id):
-    from extensions import db
-    from models import User, Instructor
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
-    if not current_user.is_admin:
+    if not current_user or not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
     target_user = User.query.get_or_404(user_id)
     if not target_user.is_instructor:
         return jsonify({"error": "User is not requested as an instructor"}), 400
-    # Create Instructor record
-    instructor = Instructor(
-        id=target_user.id,
-        username=target_user.username,
-        email=target_user.email,
-        password=target_user.password,
-        is_instructor=True
-    )
-    try:
+    instructor = Instructor.query.filter_by(id=target_user.id).first()
+    if not instructor:
+        instructor = Instructor(
+            id=target_user.id,
+            username=target_user.username,
+            email=target_user.email,
+            password=target_user.password,
+            is_instructor=True,
+            is_instructor_verified=True  # Set to True on approval
+        )
         db.session.add(instructor)
+    else:
+        instructor.is_instructor_verified = True
+    try:
         db.session.commit()
         return jsonify({"message": f"Instructor {target_user.username} approved"}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to approve instructor: {str(e)}"}), 500
-
+    
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
@@ -215,16 +220,20 @@ def create_course():
 @admin_bp.route('/courses', methods=['GET'])
 @jwt_required()
 def get_courses():
-    from models import Course, User  # Added User for admin check
-    from schemas import CourseSchema
-    courses_schema = CourseSchema(many=True)
-    current_user_id = get_jwt_identity()
-    current_user = User.query.filter_by(username=current_user_id).first()
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    courses = Course.query.all()
-    return jsonify(courses_schema.dump(courses)), 200
-
+    try:
+        from models import Course, User
+        from schemas import CourseSchema
+        courses_schema = CourseSchema(many=True)
+        current_user_id = get_jwt_identity()
+        current_user = User.query.filter_by(username=current_user_id).first()
+        if not current_user or not current_user.is_admin:  # Added check for None
+            return jsonify({"error": "Unauthorized: Admin access required"}), 403
+        courses = Course.query.all()
+        return jsonify(courses_schema.dump(courses)), 200
+    except Exception as e:
+        print(f"Error in get_courses: {str(e)}")  # Log to console for debugging
+        return jsonify({"error": f"Failed to fetch courses: {str(e)}"}), 500
+    
 @admin_bp.route('/courses/<int:course_id>', methods=['GET'])
 @jwt_required()
 def get_course(course_id):
@@ -285,17 +294,25 @@ def delete_course(course_id):
 @admin_bp.route('/grades', methods=['GET'])
 @jwt_required()
 def get_grades():
-    current_user_id = get_jwt_identity()
-    current_user = User.query.filter_by(username=current_user_id).first()
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    grades = Grade.query.all()
-    grade_data = [{
-        'id': g.id, 'student_id': g.student_id, 'course_id': g.course_id, 
-        'grade': g.grade, 'course': {'name': g.course.name} if g.course else None
-    } for g in grades]
-    return jsonify(grade_data), 200
-
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.filter_by(username=current_user_id).first()
+        if not current_user or not current_user.is_admin:  # Added check for None
+            return jsonify({"error": "Unauthorized: Admin access required"}), 403
+        grades = Grade.query.all()
+        grade_data = [{
+            'id': g.id, 
+            'student_id': g.student_id, 
+            'course_id': g.course_id, 
+            'grade': g.grade, 
+            'course': {'name': g.course.name} if g.course else None
+        } for g in grades]
+        return jsonify(grade_data), 200
+    except Exception as e:
+        print(f"Error in get_grades: {str(e)}")  # Log to console for debugging
+        return jsonify({"error": f"Failed to fetch grades: {str(e)}"}), 500
+    
+    
 @admin_bp.route('/grades', methods=['POST'])
 @jwt_required()
 def create_grade():
