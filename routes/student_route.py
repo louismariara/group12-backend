@@ -1,49 +1,49 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from schemas import CourseSchema, GradeSchema
 from extensions import db
+from models import User, Course, student_course
 
-# Initialize the Blueprint
-student_bp = Blueprint('student', __name__)
+student_bp = Blueprint('student_bp', __name__)
 
-# Initialize schemas
-course_schema = CourseSchema()
-courses_schema = CourseSchema(many=True)
-grade_schema = GradeSchema()
-grades_schema = GradeSchema(many=True)
-
-# Route to view all courses (read-only)
 @student_bp.route('/my-grades', methods=['GET'])
 @jwt_required()
-def get_my_grades():
-    from extensions import db
-    from models import User, Student, Grade 
-    from schemas import GradeSchema
-    grades_schema = GradeSchema(many=True)
-    try:
-        student_username = get_jwt_identity()
-        user = User.query.filter_by(username=student_username).first()
-        if not user or not user.is_student:
-            return jsonify({'message': 'Student not found or not a student'}), 404
-        if user.is_admin:
-            return jsonify({'message': 'Admins cannot view student grades here'}), 403
-        student = Student.query.filter_by(username=student_username).first()
-        if not student:
-            return jsonify({'message': 'Student not found'}), 404
-        grades = Grade.query.filter_by(student_id=student.id).all()
-        return jsonify(grades_schema.dump(grades)), 200
-    except Exception as e:
-        return jsonify({'error': f'Failed to fetch your grades: {str(e)}'}), 500
+def get_student_grades():
+    current_user_id = get_jwt_identity()
+    current_user = User.query.filter_by(username=current_user_id).first()
+    if current_user.role != "student":
+        return jsonify({"error": "Unauthorized: Student access required"}), 403
+    grades = current_user.grades
+    grade_data = [{
+        'id': g.id, 'course_id': g.course_id, 'grade': g.grade, 
+        'course': {'name': g.course.name} if g.course else None
+    } for g in grades]
+    return jsonify(grade_data), 200
 
-@student_bp.route('/courses', methods=['GET'])
+@student_bp.route('/enroll', methods=['POST'])
 @jwt_required()
-def get_all_courses():
-    from extensions import db
-    from models import Course
-    from schemas import CourseSchema
-    courses_schema = CourseSchema(many=True)
-    try:
-        courses = Course.query.all()
-        return jsonify(courses_schema.dump(courses)), 200
-    except Exception as e:
-        return jsonify({'error': f'Failed to fetch courses: {str(e)}'}), 500
+def enroll_in_course():
+    current_user_id = get_jwt_identity()
+    current_user = User.query.filter_by(username=current_user_id).first()
+    if current_user.role != "student":
+        return jsonify({"error": "Unauthorized: Student access required"}), 403
+    data = request.get_json()
+    course_id = data.get('course_id')
+    course = Course.query.get_or_404(course_id)
+    # Check if already enrolled
+    if db.session.query(student_course).filter_by(student_id=current_user.id, course_id=course_id).first():
+        return jsonify({"error": "Already enrolled in this course"}), 400
+    # Enroll
+    db.session.execute(student_course.insert().values(student_id=current_user.id, course_id=course_id))
+    db.session.commit()
+    return jsonify({"message": "Enrolled successfully"}), 200
+
+@student_bp.route('/my-courses', methods=['GET'])
+@jwt_required()
+def get_my_courses():
+    current_user_id = get_jwt_identity()
+    current_user = User.query.filter_by(username=current_user_id).first()
+    if current_user.role != "student":
+        return jsonify({"error": "Unauthorized: Student access required"}), 403
+    courses = Course.query.join(student_course).filter(student_course.c.student_id == current_user.id).all()
+    course_data = [{'id': c.id, 'name': c.name, 'instructor_id': c.instructor_id} for c in courses]
+    return jsonify(course_data), 200

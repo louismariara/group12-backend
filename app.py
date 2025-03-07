@@ -3,7 +3,6 @@ from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from dotenv import load_dotenv
-from datetime import timedelta
 from flask_cors import CORS
 from config import Config
 from production import ProductionConfig
@@ -27,12 +26,13 @@ if os.getenv('FLASK_ENV') == 'production':
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(Config)
-    
-logging.basicConfig(level=logging.DEBUG)  
+
+# Logging setup
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Configure CORS to allow localhost:3000 (override config.py if needed)
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000"]}})
+# Configure CORS
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000"]}}, supports_credentials=True)
 
 # Initialize extensions
 db.init_app(app)
@@ -41,54 +41,30 @@ migrate = Migrate(app, db)
 bcrypt.init_app(app)
 jwt.init_app(app)
 
-# Register blueprints directly
+# Register blueprints
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(student_bp, url_prefix='/api/students')
 app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
 
-# Protected route
-@app.route('/api/protected', methods=['GET'])
-@jwt_required()
-def protected():
-    try:
-        current_user = get_jwt_identity()
-        return jsonify({'message': f'Hello, {current_user}! You are authenticated.'}), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to access protected route: {str(e)}"}), 500
+# Custom decorator to skip JWT for OPTIONS
+def jwt_required_optional(fn):
+    def wrapper(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return '', 200  # Allow preflight requests without JWT
+        return jwt_required()(fn)(*args, **kwargs)
+    wrapper.__name__ = fn.__name__  # Preserve endpoint name
+    return wrapper
 
-# Existing API endpoints with model imports inside functions
-@app.route('/api/students', methods=['GET'])
-@jwt_required()
-def get_students():
-    from extensions import db
-    from models import Student
-    from schemas import StudentSchema
-    try:
-        students = Student.query.all()
-        return StudentSchema(many=True).dump(students), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to fetch students: {str(e)}"}), 500
-
-@app.route('/api/instructors', methods=['GET'])
-@jwt_required()
-def get_instructors():
-    from extensions import db
-    from models import Instructor
-    from schemas import InstructorSchema
-    try:
-        instructors = Instructor.query.all()
-        return InstructorSchema(many=True).dump(instructors), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to fetch instructors: {str(e)}"}), 500
-
-@app.route('/api/courses', methods=['GET'])
-@jwt_required()
+@app.route('/api/courses', methods=['GET', 'OPTIONS'])
+@jwt_required_optional
 def get_courses():
+    if request.method == 'OPTIONS':
+        logger.debug("Handling OPTIONS request for /api/courses")
+        return '', 200
     from extensions import db
     from models import Course
     from schemas import CourseSchema
-    logger.debug(f"Received request to /api/courses with token: {request.headers.get('Authorization')}")
     try:
         logger.debug("Fetching all courses")
         courses = Course.query.all()
@@ -99,21 +75,25 @@ def get_courses():
     except Exception as e:
         logger.error(f"Error in get_courses: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to fetch courses: {str(e)}"}), 500
-    
-@app.route('/api/students/<int:student_id>/courses/<int:course_id>', methods=['POST'])
-@jwt_required()
-def enroll_student_in_course(student_id, course_id):
+
+@app.route('/api/courses/<int:course_id>', methods=['GET', 'OPTIONS'])
+@jwt_required_optional
+def get_course(course_id):
+    if request.method == 'OPTIONS':
+        logger.debug(f"Handling OPTIONS request for /api/courses/{course_id}")
+        return '', 200
     from extensions import db
-    from models import Student, Course
+    from models import Course
+    from schemas import CourseSchema
     try:
-        student = Student.query.get_or_404(student_id)
+        logger.debug(f"Fetching course with ID: {course_id}")
         course = Course.query.get_or_404(course_id)
-        student.courses.append(course)
-        db.session.commit()
-        return jsonify({'message': 'Student enrolled successfully'}), 200
+        logger.debug("Course found, serializing data")
+        result = CourseSchema().dump(course)
+        return result, 200
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Failed to enroll student: {str(e)}"}), 500
+        logger.error(f"Error fetching course {course_id}: {str(e)}", exc_info=True)
+        return jsonify({"error": f"Failed to fetch course: {str(e)}"}), 500
 
 # Check database connection
 with app.app_context():

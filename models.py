@@ -31,8 +31,8 @@ class User(db.Model):
 class Student(db.Model):
     __tablename__ = "student"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(100), nullable=False, unique=True)
+    email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.LargeBinary, nullable=False)
     is_student = db.Column(db.Boolean, default=True)
     courses = db.relationship('Course', secondary=student_course, backref=db.backref('students', lazy='dynamic'))
@@ -40,11 +40,12 @@ class Student(db.Model):
 class Instructor(db.Model):
     __tablename__ = "instructor"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(100), nullable=False, unique=True)
+    email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.LargeBinary, nullable=False)
     is_instructor = db.Column(db.Boolean, default=True)
-    # Removed course_id and course relationship
+    is_instructor_verified = db.Column(db.Boolean, default=False)  # Added for verification
+    courses = db.relationship('Course', backref='instructor', lazy='dynamic')
 
 class Course(db.Model):
     __tablename__ = "course"
@@ -54,12 +55,8 @@ class Course(db.Model):
     instructor_id = db.Column(db.Integer, db.ForeignKey("instructor.id"), nullable=True)
     image = db.Column(db.String(255), nullable=True)
     modules = db.Column(db.JSON, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Add this
-    instructor = db.relationship(
-        "Instructor", backref=db.backref("courses", lazy="dynamic"), foreign_keys=[instructor_id]
-    )    
-    
-    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Grade(db.Model):
     __tablename__ = "grade"
     id = db.Column(db.Integer, primary_key=True)

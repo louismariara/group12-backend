@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db, bcrypt
 from supabase import create_client, Client
 import os
-
+from models import User, Grade, Course
 # Define blueprint once
 admin_bp = Blueprint('admin', __name__)
 supabase_url = os.getenv("SUPABASE_URL")
@@ -282,95 +282,61 @@ def delete_course(course_id):
         return jsonify({"error": f"Failed to delete course: {str(e)}"}), 500
 
 # Grade Routes
-@admin_bp.route('/grades', methods=['POST'])
-@jwt_required()
-def create_grade():
-    from models import Grade, User  # Added User for admin check
-    from schemas import GradeSchema
-    grade_schema = GradeSchema()
-    current_user_id = get_jwt_identity()
-    current_user = User.query.filter_by(username=current_user_id).first()
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    data = request.get_json()
-    if not data or not all(key in data for key in ['student_id', 'course_id', 'grade']):
-        return jsonify({"error": "Missing required fields: student_id, course_id, and grade"}), 400
-    new_grade = Grade(
-        student_id=data['student_id'],
-        course_id=data['course_id'],
-        grade=data['grade']
-    )
-    try:
-        db.session.add(new_grade)
-        db.session.commit()
-        return jsonify(grade_schema.dump(new_grade)), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Failed to create grade: {str(e)}"}), 500
-
 @admin_bp.route('/grades', methods=['GET'])
 @jwt_required()
-def get_all_grades():
-    from models import Grade, User  # Added User for admin check
-    from schemas import GradeSchema
-    grades_schema = GradeSchema(many=True)
+def get_grades():
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
     grades = Grade.query.all()
-    return jsonify(grades_schema.dump(grades)), 200
+    grade_data = [{
+        'id': g.id, 'student_id': g.student_id, 'course_id': g.course_id, 
+        'grade': g.grade, 'course': {'name': g.course.name} if g.course else None
+    } for g in grades]
+    return jsonify(grade_data), 200
 
-@admin_bp.route('/grades/<int:grade_id>', methods=['GET'])
+@admin_bp.route('/grades', methods=['POST'])
 @jwt_required()
-def get_grade(grade_id):
-    from models import Grade, User  # Added User for admin check
-    from schemas import GradeSchema
-    grade_schema = GradeSchema()
+def create_grade():
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    grade = Grade.query.get_or_404(grade_id)
-    return jsonify(grade_schema.dump(grade)), 200
+    data = request.get_json()
+    student_id = data.get('student_id')
+    course_id = data.get('course_id')
+    grade_value = data.get('grade')
+    if not all([student_id, course_id, grade_value]):
+        return jsonify({"error": "Missing required fields"}), 400
+    new_grade = Grade(student_id=student_id, course_id=course_id, grade=grade_value)
+    db.session.add(new_grade)
+    db.session.commit()
+    return jsonify({"message": "Grade created", "id": new_grade.id}), 201
 
 @admin_bp.route('/grades/<int:grade_id>', methods=['PUT'])
 @jwt_required()
 def update_grade(grade_id):
-    from models import Grade, User  # Added User for admin check
-    from schemas import GradeSchema
-    grade_schema = GradeSchema()
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
     grade = Grade.query.get_or_404(grade_id)
     data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    if 'grade' in data:
-        grade.grade = data['grade']
-    try:
-        db.session.commit()
-        return jsonify(grade_schema.dump(grade)), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Failed to update grade: {str(e)}"}), 500
+    grade.student_id = data.get('student_id', grade.student_id)
+    grade.course_id = data.get('course_id', grade.course_id)
+    grade.grade = data.get('grade', grade.grade)
+    db.session.commit()
+    return jsonify({"message": "Grade updated"}), 200
 
 @admin_bp.route('/grades/<int:grade_id>', methods=['DELETE'])
 @jwt_required()
 def delete_grade(grade_id):
-    from models import Grade, User  # Added User for admin check
-    from schemas import GradeSchema  # Unused but kept for consistency
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
     grade = Grade.query.get_or_404(grade_id)
-    try:
-        db.session.delete(grade)
-        db.session.commit()
-        return jsonify({"message": "Grade deleted successfully"}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Failed to delete grade: {str(e)}"}), 500
+    db.session.delete(grade)
+    db.session.commit()
+    return jsonify({"message": "Grade deleted"}), 200

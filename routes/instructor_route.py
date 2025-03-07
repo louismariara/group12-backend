@@ -1,21 +1,16 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import Course, Student, Grade, Instructor
-from schemas import CourseSchema, StudentSchema, GradeSchema
+from models import Course, User, Student, Grade, Instructor
+from schemas import CourseSchema, GradeSchema
 from extensions import db
 
-# Initialize the Blueprint
 instructor_bp = Blueprint('instructor', __name__)
 
-# Initialize schemas
 course_schema = CourseSchema()
 courses_schema = CourseSchema(many=True)
-student_schema = StudentSchema()
-students_schema = StudentSchema(many=True)
 grade_schema = GradeSchema()
 grades_schema = GradeSchema(many=True)
 
-# Route to view all courses
 @instructor_bp.route('/courses', methods=['GET'])
 @jwt_required()
 def get_all_courses():
@@ -25,40 +20,27 @@ def get_all_courses():
     except Exception as e:
         return jsonify({'error': f'Failed to fetch courses: {str(e)}'}), 500
 
-# Route to view courses taught by the instructor
 @instructor_bp.route('/my-courses', methods=['GET'])
 @jwt_required()
 def get_my_courses():
-    from extensions import db
-    from models import Instructor, Course, User
     try:
         instructor_username = get_jwt_identity()
-        user = User.query.filter_by(username=instructor_username).first()
-        if not user or not user.is_instructor:
-            return jsonify({'message': 'Not an instructor'}), 403
         instructor = Instructor.query.filter_by(username=instructor_username).first()
-        if not instructor:
-            return jsonify({'message': 'Instructor not verified by admin'}), 403
+        if not instructor or not instructor.is_instructor_verified:
+            return jsonify({'message': 'Not a verified instructor'}), 403
         courses = Course.query.filter_by(instructor_id=instructor.id).all()
         return jsonify(courses_schema.dump(courses)), 200
     except Exception as e:
         return jsonify({'error': f'Failed to fetch your courses: {str(e)}'}), 500
-    
 
-# Route to update a course
 @instructor_bp.route('/courses/<int:course_id>', methods=['PUT'])
 @jwt_required()
 def update_course(course_id):
-    from extensions import db
-    from models import Instructor, Course, User
     try:
-        instructor_username = get_jwt_identity()  # Added missing line
-        user = User.query.filter_by(username=instructor_username).first()
-        if not user or not user.is_instructor:
-            return jsonify({'message': 'Not an instructor'}), 403
+        instructor_username = get_jwt_identity()
         instructor = Instructor.query.filter_by(username=instructor_username).first()
-        if not instructor:
-            return jsonify({'message': 'Instructor not verified by admin'}), 403
+        if not instructor or not instructor.is_instructor_verified:
+            return jsonify({'message': 'Not a verified instructor'}), 403
         course = Course.query.filter_by(id=course_id, instructor_id=instructor.id).first()
         if not course:
             return jsonify({'message': 'Course not found or you are not the instructor'}), 404
@@ -72,79 +54,102 @@ def update_course(course_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to update course: {str(e)}'}), 500
-    
-    
-# Route to view students enrolled in a course
+
 @instructor_bp.route('/courses/<int:course_id>/students', methods=['GET'])
 @jwt_required()
 def get_students_in_course(course_id):
-    from extensions import db
-    from models import Instructor, Course, User
     try:
         instructor_username = get_jwt_identity()
-        user = User.query.filter_by(username=instructor_username).first()
-        if not user or not user.is_instructor:
-            return jsonify({'message': 'Not an instructor'}), 403
         instructor = Instructor.query.filter_by(username=instructor_username).first()
-        if not instructor:
-            return jsonify({'message': 'Instructor not verified by admin'}), 403
+        if not instructor or not instructor.is_instructor_verified:
+            return jsonify({'message': 'Not a verified instructor'}), 403
         course = Course.query.filter_by(id=course_id, instructor_id=instructor.id).first()
         if not course:
             return jsonify({'message': 'Course not found or you are not the instructor'}), 404
         students = course.students
-        return jsonify(students_schema.dump(students)), 200
+        student_data = [{'id': s.id, 'username': s.username} for s in students]
+        return jsonify(student_data), 200
     except Exception as e:
         return jsonify({'error': f'Failed to fetch students: {str(e)}'}), 500
-    
-# Route to view grades in a course
-@instructor_bp.route('/courses/<int:course_id>/grades', methods=['GET'])
+
+@instructor_bp.route('/grades', methods=['GET'])
 @jwt_required()
-def get_grades_in_course(course_id):
-    from extensions import db
-    from models import Instructor, Course, Grade, User
-    try:
-        instructor_username = get_jwt_identity()
-        user = User.query.filter_by(username=instructor_username).first()
-        if not user or not user.is_instructor:
-            return jsonify({'message': 'Not an instructor'}), 403
-        instructor = Instructor.query.filter_by(username=instructor_username).first()
-        if not instructor:
-            return jsonify({'message': 'Instructor not verified by admin'}), 403
-        course = Course.query.filter_by(id=course_id, instructor_id=instructor.id).first()
-        if not course:
-            return jsonify({'message': 'Course not found or you are not the instructor'}), 404
-        grades = Grade.query.filter_by(course_id=course_id).all()
-        return jsonify(grades_schema.dump(grades)), 200
-    except Exception as e:
-        return jsonify({'error': f'Failed to fetch grades: {str(e)}'}), 500
-    
-# Route to edit a grade
+def get_instructor_grades():
+    instructor_username = get_jwt_identity()
+    instructor = Instructor.query.filter_by(username=instructor_username).first()
+    if not instructor or not instructor.is_instructor_verified:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    grades = Grade.query.join(Course).filter(Course.instructor_id == instructor.id).all()
+    grade_data = [{
+        'id': g.id, 'student_id': g.student_id, 'course_id': g.course_id, 
+        'grade': g.grade, 'course': {'name': g.course.name}
+    } for g in grades]
+    return jsonify(grade_data), 200
+
+@instructor_bp.route('/grades', methods=['POST'])
+@jwt_required()
+def create_instructor_grade():
+    instructor_username = get_jwt_identity()
+    instructor = Instructor.query.filter_by(username=instructor_username).first()
+    if not instructor or not instructor.is_instructor_verified:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    data = request.get_json()
+    student_id = data.get('student_id')
+    course_id = data.get('course_id')
+    grade_value = data.get('grade')
+    course = Course.query.get_or_404(course_id)
+    if course.instructor_id != instructor.id:
+        return jsonify({"error": "Cannot grade a course you don’t teach"}), 403
+    new_grade = Grade(student_id=student_id, course_id=course_id, grade=grade_value)
+    db.session.add(new_grade)
+    db.session.commit()
+    return jsonify({"message": "Grade created", "id": new_grade.id}), 201
+
 @instructor_bp.route('/grades/<int:grade_id>', methods=['PUT'])
 @jwt_required()
-def update_grade(grade_id):
-    from extensions import db
-    from models import Instructor, Course, Grade, User
-    try:
-        instructor_username = get_jwt_identity()
-        user = User.query.filter_by(username=instructor_username).first()
-        if not user or not user.is_instructor:
-            return jsonify({'message': 'Not an instructor'}), 403
-        instructor = Instructor.query.filter_by(username=instructor_username).first()
-        if not instructor:
-            return jsonify({'message': 'Instructor not verified by admin'}), 403
-        grade = Grade.query.filter_by(id=grade_id).first()
-        if not grade:
-            return jsonify({'message': 'Grade not found'}), 404
-        course = Course.query.filter_by(id=grade.course_id, instructor_id=instructor.id).first()
-        if not course:
-            return jsonify({'message': 'You are not the instructor for this course'}), 403
-        data = request.get_json()
-        if 'grade' in data:
-            grade.grade = data['grade']
-        if 'comments' in data:
-            grade.comments = data['comments']
-        db.session.commit()
-        return jsonify(grade_schema.dump(grade)), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Failed to update grade: {str(e)}'}), 500
+def update_instructor_grade(grade_id):
+    instructor_username = get_jwt_identity()
+    instructor = Instructor.query.filter_by(username=instructor_username).first()
+    if not instructor or not instructor.is_instructor_verified:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    grade = Grade.query.get_or_404(grade_id)
+    course = Course.query.get_or_404(grade.course_id)
+    if course.instructor_id != instructor.id:
+        return jsonify({"error": "Cannot edit grades for a course you don’t teach"}), 403
+    data = request.get_json()
+    grade.student_id = data.get('student_id', grade.student_id)
+    grade.course_id = data.get('course_id', grade.course_id)
+    grade.grade = data.get('grade', grade.grade)
+    db.session.commit()
+    return jsonify({"message": "Grade updated"}), 200
+
+@instructor_bp.route('/grades/<int:grade_id>', methods=['DELETE'])
+@jwt_required()
+def delete_instructor_grade(grade_id):
+    instructor_username = get_jwt_identity()
+    instructor = Instructor.query.filter_by(username=instructor_username).first()
+    if not instructor or not instructor.is_instructor_verified:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    grade = Grade.query.get_or_404(grade_id)
+    course = Course.query.get_or_404(grade.course_id)
+    if course.instructor_id != instructor.id:
+        return jsonify({"error": "Cannot delete grades for a course you don’t teach"}), 403
+    db.session.delete(grade)
+    db.session.commit()
+    return jsonify({"message": "Grade deleted"}), 200
+
+@instructor_bp.route('/assign-course', methods=['POST'])
+@jwt_required()
+def assign_course():
+    instructor_username = get_jwt_identity()
+    instructor = Instructor.query.filter_by(username=instructor_username).first()
+    if not instructor or not instructor.is_instructor_verified:
+        return jsonify({"error": "Unauthorized: Instructor access required"}), 403
+    data = request.get_json()
+    course_id = data.get('course_id')
+    course = Course.query.get_or_404(course_id)
+    if course.instructor_id:
+        return jsonify({"error": "Course already assigned to an instructor"}), 400
+    course.instructor_id = instructor.id
+    db.session.commit()
+    return jsonify({"message": "Course assigned successfully"}), 200
