@@ -34,7 +34,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Configure CORS using config values
-CORS(app, resources=app.config['CORS_RESOURCES'], supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "expose_headers": "*"}})
 
 # Initialize extensions
 db.init_app(app)
@@ -42,6 +42,30 @@ ma = Marshmallow(app)
 migrate = Migrate(app, db)
 bcrypt.init_app(app)
 jwt.init_app(app)
+
+@app.before_request
+def handle_preflight():
+        """ Ensure OPTIONS requests return correct CORS headers. """
+        if request.method == "OPTIONS":
+            response = jsonify({"message": "CORS Preflight OK"})
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            response.headers["Content-Type"] = "application/json"  # Set JSON Content-Type
+            return response, 200
+
+@app.after_request
+def add_cors_headers(response):
+        """ Ensure all responses include correct CORS headers and JSON Content-Type. """
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        
+        #  Ensure the response is always JSON
+        if response.content_type == "text/html; charset=utf-8":
+            response.headers["Content-Type"] = "application/json"
+        
+        return response
 
 # Register blueprints
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
