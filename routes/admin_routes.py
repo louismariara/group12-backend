@@ -250,28 +250,43 @@ def get_course(course_id):
 @admin_bp.route('/courses/<int:course_id>', methods=['PUT'])
 @jwt_required()
 def update_course(course_id):
-    from models import Course, User  # Added User for admin check
+    from models import Course, User
     from schemas import CourseSchema
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
     course_schema = CourseSchema()
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
+        logger.warning(f"Unauthorized access attempt by {current_user_id}")
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
+    
     course = Course.query.get_or_404(course_id)
     data = request.get_json()
+    logger.debug(f"Received data for course {course_id}: {data}")
+    
     if not data:
+        logger.error("No data provided in request")
         return jsonify({"error": "No data provided"}), 400
+    
     if 'name' in data:
         course.name = data['name']
     if 'duration' in data:
         course.duration = data['duration']
+    if 'image' in data:
+        course.image = data['image']
+        logger.debug(f"Updated image for course {course_id} to {data['image']}")
+    
     try:
         db.session.commit()
+        logger.info(f"Successfully updated course {course_id}")
         return jsonify(course_schema.dump(course)), 200
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Failed to update course {course_id}: {str(e)}")
         return jsonify({"error": f"Failed to update course: {str(e)}"}), 500
-
 @admin_bp.route('/courses/<int:course_id>', methods=['DELETE'])
 @jwt_required()
 def delete_course(course_id):
