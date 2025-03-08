@@ -14,8 +14,8 @@ from routes.admin_routes import admin_bp
 from routes.auth_route import auth_bp
 from routes.student_route import student_bp
 from routes.instructor_route import instructor_bp
-from models import Course  # Import at top
-from schemas import CourseSchema  # Import at top
+from models import Course, User  # Added User import
+from schemas import CourseSchema
 
 # Load environment variables
 load_dotenv()
@@ -23,17 +23,17 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
-# Load configuration based on environment
+# Load configuration
 if os.getenv('FLASK_ENV') == 'production':
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(Config)
 
-# Logging setup (override config.py's basic setup if needed)
+# Logging setup
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Configure CORS using config values
+# Configure CORS
 CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "expose_headers": "*"}})
 
 # Initialize extensions
@@ -45,27 +45,22 @@ jwt.init_app(app)
 
 @app.before_request
 def handle_preflight():
-        """ Ensure OPTIONS requests return correct CORS headers. """
-        if request.method == "OPTIONS":
-            response = jsonify({"message": "CORS Preflight OK"})
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-            response.headers["Content-Type"] = "application/json"  # Set JSON Content-Type
-            return response, 200
-
-@app.after_request
-def add_cors_headers(response):
-        """ Ensure all responses include correct CORS headers and JSON Content-Type. """
+    if request.method == "OPTIONS":
+        response = jsonify({"message": "CORS Preflight OK"})
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        
-        #  Ensure the response is always JSON
-        if response.content_type == "text/html; charset=utf-8":
-            response.headers["Content-Type"] = "application/json"
-        
-        return response
+        response.headers["Content-Type"] = "application/json"
+        return response, 200
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    if response.content_type == "text/html; charset=utf-8":
+        response.headers["Content-Type"] = "application/json"
+    return response
 
 # Register blueprints
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
@@ -78,9 +73,9 @@ def jwt_required_optional(fn):
     def wrapper(*args, **kwargs):
         if request.method == 'OPTIONS':
             logger.debug(f"Handling OPTIONS request for {request.path}")
-            return '', 200  # Allow preflight requests without JWT
+            return '', 200
         return jwt_required()(fn)(*args, **kwargs)
-    wrapper.__name__ = fn.__name__  # Preserve endpoint name
+    wrapper.__name__ = fn.__name__
     return wrapper
 
 @app.route('/api/courses', methods=['GET', 'OPTIONS'])
@@ -119,12 +114,25 @@ def get_course(course_id):
 # Check database connection and create tables
 with app.app_context():
     try:
-        db.create_all()  # Ensure tables are created
+        db.create_all()
         db.session.execute(text('SELECT 1'))
         print("Database connection successful and tables created!")
+        # Seed admin user
+        if not User.query.filter_by(username="admin").first():
+            admin = User(
+                username="admin",
+                email="admin@example.com",
+                password=bcrypt.generate_password_hash("admin123").decode('utf-8'),
+                is_admin=True,
+                is_instructor=False,
+                is_student=False
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin user seeded")
     except Exception as e:
         print(f"Database connection failed: {e}")
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Get port from environment, default to 5000
+    port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
