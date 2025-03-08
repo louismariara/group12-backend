@@ -3,13 +3,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db, bcrypt
 from supabase import create_client, Client
 import os
-from models import User, Grade, Course , Instructor
+from models import User, Grade, Course, Instructor
 # Define blueprint once
 admin_bp = Blueprint('admin', __name__)
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_ANON_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
-
 
 # User Routes
 @admin_bp.route('/users', methods=['POST'])
@@ -32,11 +31,10 @@ def create_user():
     existing_email = User.query.filter_by(email=data['email']).first()
     if existing_email:
         return jsonify({"error": "Email already exists"}), 400
-    # Use generate_password_hash and store as bytes (no decode)
     new_user = User(
         username=data['username'],
         email=data['email'],
-        password=bcrypt.generate_password_hash(data['password'].encode('utf-8'))  # Bytes, not string
+        password=bcrypt.generate_password_hash(data['password'].encode('utf-8'))
     )
     new_user.is_admin = data.get('is_admin', False)
     new_user.is_instructor = data.get('is_instructor', False)
@@ -48,8 +46,7 @@ def create_user():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to create user: {str(e)}"}), 500
-    
-    
+
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
@@ -70,7 +67,7 @@ def get_users():
     except Exception as e:
         print(f"Error in get_users: {str(e)}")
         return jsonify({"error": f"Failed to fetch users: {str(e)}"}), 500
-    
+
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
@@ -96,7 +93,7 @@ def update_user(user_id):
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    target_user = User.query.get_or_404(user_id)  # Renamed to clarify
+    target_user = User.query.get_or_404(user_id)
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -112,18 +109,18 @@ def update_user(user_id):
         target_user.email = data['email']
     if 'password' in data:
         target_user.password = bcrypt.generate_password_hash(data['password'].encode('utf-8'))
-    is_instructor = data.get('is_instructor', None)  # Default to None if not provided
-    if is_instructor is not None:  # Only update if provided
+    is_instructor = data.get('is_instructor', None)
+    if is_instructor is not None:
         target_user.is_instructor = bool(is_instructor)
         if target_user.is_instructor:
             target_user.is_student = False
-    is_student = data.get('is_student', None)  # Default to None if not provided
-    if is_student is not None:  # Only update if provided
+    is_student = data.get('is_student', None)
+    if is_student is not None:
         target_user.is_student = bool(is_student)
         if target_user.is_student:
             target_user.is_instructor = False
-    target_user.is_admin = data.get('is_admin', target_user.is_admin)  # Already uses get
-    try: 
+    target_user.is_admin = data.get('is_admin', target_user.is_admin)
+    try:
         db.session.commit()
         user_data = {
             'id': target_user.id,
@@ -135,7 +132,7 @@ def update_user(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to update user: {str(e)}"}), 500
-    
+
 @admin_bp.route('/users/<int:user_id>/approve-instructor', methods=['PUT'])
 @jwt_required()
 def approve_instructor(user_id):
@@ -154,7 +151,7 @@ def approve_instructor(user_id):
             email=target_user.email,
             password=target_user.password,
             is_instructor=True,
-            is_instructor_verified=True  # Set to True on approval
+            is_instructor_verified=True
         )
         db.session.add(instructor)
     else:
@@ -165,7 +162,7 @@ def approve_instructor(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to approve instructor: {str(e)}"}), 500
-    
+
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
@@ -174,7 +171,7 @@ def delete_user(user_id):
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
-    target_user = User.query.get_or_404(user_id)  # Renamed to clarify
+    target_user = User.query.get_or_404(user_id)
     try:
         db.session.delete(target_user)
         db.session.commit()
@@ -188,7 +185,7 @@ def delete_user(user_id):
 @jwt_required()
 def create_course():
     from extensions import db
-    from models import Course,User
+    from models import Course, User
     from schemas import CourseSchema
     course_schema = CourseSchema()
     current_user_id = get_jwt_identity()
@@ -201,13 +198,12 @@ def create_course():
     new_course = Course(
         name=data["name"],
         duration=data["duration"],
-        image=data.get("image", None),  # Store path or URL
+        image=data.get("image", None),
         modules=data.get("modules", None),
     )
     try:
-        if data.get("image_file"):  # If uploading a file (advanced)
+        if data.get("image_file"):
             file_path = data["image_file"]
-            # Upload to Supabase Storage (example)
             response = supabase.storage.from_("course_images").upload(file_path, file_path.split("/")[-1])
             new_course.image = f"https://<your-supabase-project>.supabase.co/storage/v1/object/public/course_images/{file_path.split('/')[-1]}"
         db.session.add(new_course)
@@ -216,7 +212,7 @@ def create_course():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to create course: {str(e)}"}), 500
-    
+
 @admin_bp.route('/courses', methods=['GET'])
 @jwt_required()
 def get_courses():
@@ -226,18 +222,18 @@ def get_courses():
         courses_schema = CourseSchema(many=True)
         current_user_id = get_jwt_identity()
         current_user = User.query.filter_by(username=current_user_id).first()
-        if not current_user or not current_user.is_admin:  # Added check for None
+        if not current_user or not current_user.is_admin:
             return jsonify({"error": "Unauthorized: Admin access required"}), 403
         courses = Course.query.all()
         return jsonify(courses_schema.dump(courses)), 200
     except Exception as e:
-        print(f"Error in get_courses: {str(e)}")  # Log to console for debugging
+        print(f"Error in get_courses: {str(e)}")
         return jsonify({"error": f"Failed to fetch courses: {str(e)}"}), 500
-    
+
 @admin_bp.route('/courses/<int:course_id>', methods=['GET'])
 @jwt_required()
 def get_course(course_id):
-    from models import Course, User  # Added User for admin check
+    from models import Course, User
     from schemas import CourseSchema
     course_schema = CourseSchema()
     current_user_id = get_jwt_identity()
@@ -278,6 +274,8 @@ def update_course(course_id):
     if 'image' in data:
         course.image = data['image']
         logger.debug(f"Updated image for course {course_id} to {data['image']}")
+    if 'instructor_id' in data:  # Already supported, just explicit
+        course.instructor_id = data['instructor_id']
     
     try:
         db.session.commit()
@@ -287,11 +285,12 @@ def update_course(course_id):
         db.session.rollback()
         logger.error(f"Failed to update course {course_id}: {str(e)}")
         return jsonify({"error": f"Failed to update course: {str(e)}"}), 500
+
 @admin_bp.route('/courses/<int:course_id>', methods=['DELETE'])
 @jwt_required()
 def delete_course(course_id):
-    from models import Course, User  # Added User for admin check
-    from schemas import CourseSchema  # Unused but kept for consistency
+    from models import Course, User
+    from schemas import CourseSchema
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
@@ -305,6 +304,17 @@ def delete_course(course_id):
         db.session.rollback()
         return jsonify({"error": f"Failed to delete course: {str(e)}"}), 500
 
+# New Route: Get All Instructors
+@admin_bp.route('/instructors', methods=['GET'])
+@jwt_required()
+def get_instructors():
+    current_user_id = get_jwt_identity()
+    current_user = User.query.filter_by(username=current_user_id).first()
+    if not current_user or not current_user.is_admin:
+        return jsonify({"error": "Unauthorized: Admin access required"}), 403
+    instructors = User.query.filter_by(is_instructor=True).all()
+    return jsonify([{"id": i.id, "username": i.username} for i in instructors]), 200
+
 # Grade Routes
 @admin_bp.route('/grades', methods=['GET'])
 @jwt_required()
@@ -312,22 +322,21 @@ def get_grades():
     try:
         current_user_id = get_jwt_identity()
         current_user = User.query.filter_by(username=current_user_id).first()
-        if not current_user or not current_user.is_admin:  # Added check for None
+        if not current_user or not current_user.is_admin:
             return jsonify({"error": "Unauthorized: Admin access required"}), 403
         grades = Grade.query.all()
         grade_data = [{
-            'id': g.id, 
-            'student_id': g.student_id, 
-            'course_id': g.course_id, 
-            'grade': g.grade, 
+            'id': g.id,
+            'student_id': g.student_id,
+            'course_id': g.course_id,
+            'grade': g.grade,
             'course': {'name': g.course.name} if g.course else None
         } for g in grades]
         return jsonify(grade_data), 200
     except Exception as e:
-        print(f"Error in get_grades: {str(e)}")  # Log to console for debugging
+        print(f"Error in get_grades: {str(e)}")
         return jsonify({"error": f"Failed to fetch grades: {str(e)}"}), 500
-    
-    
+
 @admin_bp.route('/grades', methods=['POST'])
 @jwt_required()
 def create_grade():
