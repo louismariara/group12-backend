@@ -14,7 +14,7 @@ from routes.admin_routes import admin_bp
 from routes.auth_route import auth_bp
 from routes.student_route import student_bp
 from routes.instructor_route import instructor_bp
-from models import Course, User  # Added User import
+from models import Course, User  # User already imported
 from schemas import CourseSchema
 
 # Load environment variables
@@ -130,6 +130,19 @@ with app.app_context():
             db.session.add(admin)
             db.session.commit()
             print("Admin user seeded")
+        # Seed instructor user
+        if not User.query.filter_by(username="instructor1").first():
+            instructor = User(
+                username="instructor1",
+                email="instructor1@example.com",
+                password=bcrypt.generate_password_hash("instructor123").decode('utf-8'),
+                is_admin=False,
+                is_instructor=True,
+                is_student=False
+            )
+            db.session.add(instructor)
+            db.session.commit()
+            print("Instructor1 user seeded")
     except Exception as e:
         print(f"Database connection failed: {e}")
 
