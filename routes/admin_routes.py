@@ -10,7 +10,7 @@ supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_ANON_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
-# User Routes
+
 @admin_bp.route('/users', methods=['POST'])
 @jwt_required()
 def create_user():
@@ -180,7 +180,7 @@ def delete_user(user_id):
         db.session.rollback()
         return jsonify({"error": f"Failed to delete user: {str(e)}"}), 500
 
-# Course Routes
+
 @admin_bp.route('/courses', methods=['POST'])
 @jwt_required()
 def create_course():
@@ -304,7 +304,7 @@ def delete_course(course_id):
         db.session.rollback()
         return jsonify({"error": f"Failed to delete course: {str(e)}"}), 500
 
-# New Route: Get All Instructors
+
 @admin_bp.route('/instructors', methods=['GET'])
 @jwt_required()
 def get_instructors():
@@ -315,7 +315,7 @@ def get_instructors():
     instructors = User.query.filter_by(is_instructor=True).all()
     return jsonify([{"id": i.id, "username": i.username} for i in instructors]), 200
 
-# Grade Routes
+
 @admin_bp.route('/grades', methods=['GET'])
 @jwt_required()
 def get_grades():

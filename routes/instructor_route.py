@@ -33,7 +33,7 @@ def get_my_courses():
         'duration': c.duration,
         'image': c.image,
         'created_at': c.created_at.isoformat() if c.created_at else None,
-        'students': [s.id for s in c.students]  # List of student IDs
+        'students': [s.id for s in c.students]  
     } for c in courses]
     return jsonify(course_data), 200
 @instructor_bp.route('/courses/<int:course_id>', methods=['PUT'])

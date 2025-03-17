@@ -2,14 +2,14 @@ from extensions import db
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
-# Association table
+
 student_course = db.Table('student_course',
     db.Column('student_id', db.Integer, db.ForeignKey('student.id'), primary_key=True),
     db.Column('course_id', db.Integer, db.ForeignKey('course.id'), primary_key=True)
 )
 
 class User(db.Model):
-    __tablename__ = "user"  # Matches your code
+    __tablename__ = "user"  
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), nullable=False, unique=True)
     email = db.Column(db.String(100), nullable=False, unique=True)
@@ -44,7 +44,7 @@ class Instructor(db.Model):
     email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.LargeBinary, nullable=False)
     is_instructor = db.Column(db.Boolean, default=True)
-    is_instructor_verified = db.Column(db.Boolean, default=False)  # Ensure this is here
+    is_instructor_verified = db.Column(db.Boolean, default=False)  
     courses = db.relationship('Course', backref='instructor', lazy='dynamic')
 
 class Course(db.Model):

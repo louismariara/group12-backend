@@ -21,16 +21,16 @@ class CourseSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Course
         include_fk = True
-        include_relationships = True  # Enable relationships for students
+        include_relationships = True  
         load_instance = True
-        # Remove created_at from exclude to include it
+       
 
     image = auto_field("image", allow_none=True)
     modules = auto_field("modules", allow_none=True)
     name = auto_field(required=True)
     duration = auto_field(required=True)
-    created_at = auto_field(allow_none=True)  # Explicitly include
-    students = ma.Nested(UserSchema, many=True, only=("id",))  # Serialize student IDs
+    created_at = auto_field(allow_none=True)  
+    students = ma.Nested(UserSchema, many=True, only=("id",))  
 
 class InstructorSchema(SQLAlchemyAutoSchema):
     class Meta:
