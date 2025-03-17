@@ -14,7 +14,7 @@ from routes.admin_routes import admin_bp
 from routes.auth_route import auth_bp
 from routes.student_route import student_bp
 from routes.instructor_route import instructor_bp
-from models import Course, User  # User already imported
+from models import Course, User  
 from schemas import CourseSchema
 
 # Load environment variables

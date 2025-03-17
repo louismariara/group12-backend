@@ -4,7 +4,7 @@ from extensions import db, bcrypt
 from supabase import create_client, Client
 import os
 from models import User, Grade, Course, Instructor
-# Define blueprint once
+
 admin_bp = Blueprint('admin', __name__)
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_ANON_KEY")
@@ -274,7 +274,7 @@ def update_course(course_id):
     if 'image' in data:
         course.image = data['image']
         logger.debug(f"Updated image for course {course_id} to {data['image']}")
-    if 'instructor_id' in data:  # Already supported, just explicit
+    if 'instructor_id' in data:  
         course.instructor_id = data['instructor_id']
     
     try:
