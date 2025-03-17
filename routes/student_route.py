@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
-from models import User, Course, Grade, student_course  # Ensure Grade is imported
+from models import User, Course, Grade, student_course  
 
 student_bp = Blueprint('student_bp', __name__)
 
@@ -10,9 +10,9 @@ student_bp = Blueprint('student_bp', __name__)
 def get_student_grades():
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
-    if not current_user or not current_user.is_student:  # Use is_student
+    if not current_user or not current_user.is_student:  
         return jsonify({"error": "Unauthorized: Student access required"}), 403
-    grades = Grade.query.filter_by(student_id=current_user.id).all()  # Direct query
+    grades = Grade.query.filter_by(student_id=current_user.id).all()  
     grade_data = [{
         'id': g.id,
         'course_id': g.course_id,
@@ -50,6 +50,6 @@ def get_my_courses():
         'name': c.name,
         'instructor_id': c.instructor_id,
         'image': c.image,
-        'created_at': c.created_at.isoformat() if c.created_at else None  # Add created_at
+        'created_at': c.created_at.isoformat() if c.created_at else None  
     } for c in courses]
     return jsonify(course_data), 200

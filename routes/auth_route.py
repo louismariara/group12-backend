@@ -1,13 +1,13 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from extensions import db, bcrypt  # Updated imports
-from models import User, Student  # Import both User and Student
+from extensions import db, bcrypt  
+from models import User, Student  
 
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    from extensions import db, bcrypt  # Ensure extensions are used here too
+    from extensions import db, bcrypt  
     from models import User
     data = request.get_json()
     if not data or not all(key in data for key in ['username', 'password']):
@@ -80,7 +80,7 @@ def signup():
             }), 201
         elif new_user.is_instructor:
             return jsonify({'message': 'Instructor signup pending admin verification'}), 201
-        else:  # Admin or no role (default student handled above)
+        else:  
             access_token = create_access_token(identity=new_user.username)
             return jsonify({
                 "token": access_token,

@@ -8,5 +8,5 @@ class ProductionConfig(Config):
     SECRET_KEY = os.getenv('SECRET_KEY')
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'https://your-production-frontend.com').split(',')
     CORS_RESOURCES = {r"/api/*": {"origins": CORS_ORIGINS}}
-    SQLALCHEMY_ECHO = False  # Explicitly disable query logging
+    SQLALCHEMY_ECHO = False  
     logging.basicConfig(filename='app.log', level=logging.INFO)  

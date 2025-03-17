@@ -17,26 +17,25 @@ from routes.instructor_route import instructor_bp
 from models import Course, User  
 from schemas import CourseSchema
 
-# Load environment variables
+
 load_dotenv()
 
-# Initialize Flask app
 app = Flask(__name__)
 
-# Load configuration
+
 if os.getenv('FLASK_ENV') == 'production':
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(Config)
 
-# Logging setup
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Configure CORS
+
 CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "expose_headers": "*"}})
 
-# Initialize extensions
+
 db.init_app(app)
 ma = Marshmallow(app)
 migrate = Migrate(app, db)
@@ -62,13 +61,13 @@ def add_cors_headers(response):
         response.headers["Content-Type"] = "application/json"
     return response
 
-# Register blueprints
+
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(student_bp, url_prefix='/api/students')
 app.register_blueprint(instructor_bp, url_prefix='/api/instructors')
 
-# Custom decorator to skip JWT for OPTIONS
+
 def jwt_required_optional(fn):
     def wrapper(*args, **kwargs):
         if request.method == 'OPTIONS':
@@ -111,7 +110,6 @@ def get_course(course_id):
         logger.error(f"Error fetching course {course_id}: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to fetch course: {str(e)}"}), 500
 
-# Check database connection and create tables
 with app.app_context():
     try:
         db.create_all()
@@ -130,7 +128,7 @@ with app.app_context():
             db.session.add(admin)
             db.session.commit()
             print("Admin user seeded")
-        # Seed instructor user
+        
         if not User.query.filter_by(username="instructor1").first():
             instructor = User(
                 username="instructor1",
