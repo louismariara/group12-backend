@@ -9,4 +9,3 @@ class ProductionConfig(Config):
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'https://group12-frontend.vercel.app/').split(',')
     CORS_RESOURCES = {r"/api/*": {"origins": CORS_ORIGINS}}
     SQLALCHEMY_ECHO = False  
-    logging.basicConfig(filename='app.log', level=logging.INFO)  

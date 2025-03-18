@@ -120,7 +120,7 @@ with app.app_context():
             admin = User(
                 username="admin",
                 email="admin@example.com",
-                password=bcrypt.generate_password_hash("admin123").decode('utf-8'),
+                password=bcrypt.generate_password_hash("admin123"),
                 is_admin=True,
                 is_instructor=False,
                 is_student=False
@@ -133,7 +133,7 @@ with app.app_context():
             instructor = User(
                 username="instructor1",
                 email="instructor1@example.com",
-                password=bcrypt.generate_password_hash("instructor123").decode('utf-8'),
+                password=bcrypt.generate_password_hash("instructor123"),
                 is_admin=False,
                 is_instructor=True,
                 is_student=False

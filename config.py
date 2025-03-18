@@ -28,10 +28,10 @@ class Config:
         f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
         f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
     )
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'https://group12-frontend.vercel.app/').split(',')
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
     CORS_RESOURCES = {r"/api/*": {"origins": CORS_ORIGINS}}
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = os.getenv('SECRET_KEY')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
     JWT_ACCESS_TOKEN_EXPIRES = 3600 
-    DEBUG = False
+    DEBUG = True
