@@ -10,12 +10,9 @@ supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_ANON_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
-
 @admin_bp.route('/users', methods=['POST'])
 @jwt_required()
 def create_user():
-    from extensions import db, bcrypt
-    from models import User
     from schemas import UserSchema
     user_schema = UserSchema()
     current_user_id = get_jwt_identity()
@@ -71,7 +68,6 @@ def get_users():
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
-    from models import User
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
@@ -88,7 +84,6 @@ def get_user(user_id):
 @admin_bp.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def update_user(user_id):
-    from models import User
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
@@ -166,7 +161,6 @@ def approve_instructor(user_id):
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
-    from models import User
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
@@ -180,7 +174,6 @@ def delete_user(user_id):
         db.session.rollback()
         return jsonify({"error": f"Failed to delete user: {str(e)}"}), 500
 
-
 @admin_bp.route('/courses', methods=['POST'])
 @jwt_required()
 def create_course():
@@ -192,6 +185,20 @@ def create_course():
     current_user = User.query.filter_by(username=current_user_id).first()
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
+
+   
+    if 'image_file' in request.files:
+        file = request.files['image_file']
+        file_name = file.filename
+        try:
+            file_content = file.read()
+            response = supabase.storage.from_("course_images").upload(file_name, file_content)
+            image_url = f"https://group12-backend-cv2o.supabase.co/storage/v1/object/public/course_images/{file_name}"
+            return jsonify({"image": image_url}), 200
+        except Exception as e:
+            return jsonify({"error": f"Failed to upload image: {str(e)}"}), 500
+
+    
     data = request.get_json()
     if not data or not all(key in data for key in ['name', 'duration']):
         return jsonify({"error": "Missing required fields: name and duration"}), 400
@@ -202,10 +209,6 @@ def create_course():
         modules=data.get("modules", None),
     )
     try:
-        if data.get("image_file"):
-            file_path = data["image_file"]
-            response = supabase.storage.from_("course_images").upload(file_path, file_path.split("/")[-1])
-            new_course.image = f"https://<your-supabase-project>.supabase.co/storage/v1/object/public/course_images/{file_path.split('/')[-1]}"
         db.session.add(new_course)
         db.session.commit()
         return jsonify(course_schema.dump(new_course)), 201
@@ -217,7 +220,6 @@ def create_course():
 @jwt_required()
 def get_courses():
     try:
-        from models import Course, User
         from schemas import CourseSchema
         courses_schema = CourseSchema(many=True)
         current_user_id = get_jwt_identity()
@@ -233,7 +235,6 @@ def get_courses():
 @admin_bp.route('/courses/<int:course_id>', methods=['GET'])
 @jwt_required()
 def get_course(course_id):
-    from models import Course, User
     from schemas import CourseSchema
     course_schema = CourseSchema()
     current_user_id = get_jwt_identity()
@@ -246,7 +247,6 @@ def get_course(course_id):
 @admin_bp.route('/courses/<int:course_id>', methods=['PUT'])
 @jwt_required()
 def update_course(course_id):
-    from models import Course, User
     from schemas import CourseSchema
     import logging
     logging.basicConfig(level=logging.DEBUG)
@@ -289,7 +289,6 @@ def update_course(course_id):
 @admin_bp.route('/courses/<int:course_id>', methods=['DELETE'])
 @jwt_required()
 def delete_course(course_id):
-    from models import Course, User
     from schemas import CourseSchema
     current_user_id = get_jwt_identity()
     current_user = User.query.filter_by(username=current_user_id).first()
@@ -304,7 +303,6 @@ def delete_course(course_id):
         db.session.rollback()
         return jsonify({"error": f"Failed to delete course: {str(e)}"}), 500
 
-
 @admin_bp.route('/instructors', methods=['GET'])
 @jwt_required()
 def get_instructors():
@@ -314,7 +312,6 @@ def get_instructors():
         return jsonify({"error": "Unauthorized: Admin access required"}), 403
     instructors = User.query.filter_by(is_instructor=True).all()
     return jsonify([{"id": i.id, "username": i.username} for i in instructors]), 200
-
 
 @admin_bp.route('/grades', methods=['GET'])
 @jwt_required()
